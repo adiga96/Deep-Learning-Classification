@@ -4,10 +4,20 @@ In this project, we'll built an RNN-based learning model to classify different t
 
 We have used:
 
-pre-trained word embeddings
-different RNN architecture
-bidirectional RNN
-multi-layer RNN
-regularization
-optimizer
+pre-trained word embeddings,
+different RNN architecture,
+bidirectional RNN,
+multi-layer RNN,
+regularization,
+optimizer.
 
+In our model we make an attempt to classify the shortage of PPE from the tweets available.  labels, 0 and 1, i.e. 0 being no shortage of PPE and 1 being shortage of PPE. The initial step in our classification would be define fields namely, text and label. We tokenize the text field using spaCy tokenizer. spaCy is a free, open-source library for advanced Natural Language Processing (NLP) in Python. spaCy is designed specifically for production use and helps you build applications that process and “understand” large volumes of text. It can be used to build information extraction or natural language understanding systems, or to pre-process text for deep learning.
+
+We'll be using packed padded sequences, which will make our RNN only process the non-padded elements of our sequence, and for any padded element the output will be a zero tensor. To use packed padded sequences, we have to tell the RNN how long the actual sequences are. We do this by setting include lengths is equal to TRUE for our TEXT field. This will cause batch text to now be a tuple with the first element being our sentence (a numericized tensor that has been padded) and the second element being the actual lengths of our sentences. Another handy feature of TorchText is that it has support for common datasets used in natural language processing (NLP).
+The Twitter Tweets has to be split into train/test, so we need to create a validation set. By default, this splits 70- 30, however by passing a split ratio argument, we can change the ratio of the split, i.e. a split ratio of 0.8 would mean 80% of the examples make up the training set and 20% make up the validation set. We also pass our random seed to the random state argument, ensuring that we get the same train/validation split each time.
+Next is the use of pre-trained word embeddings. Now, instead of having our word embeddings initialized randomly, they are initialized with these pre-trained vectors. Here, we will use max vocab size of top 25000 most common words for quick training.
+
+GloVe is an unsupervised learning algorithm for obtaining vector representations for words. Training is performed on aggregated global word-word co-occurrence statistics from a corpus, and the resulting representations showcase interesting linear substructures of the word vector space. The vectors are trained on six billion tokens with one hundred dimensions. The theory is that these pre-trained vectors already have words with similar semantic meaning close together in vector space, e.g. "terrible", "awful", "dreadful" are nearby. This gives our embedding layer a good initialization as it does not have to learn these relations from scratch. By default, TorchText will initialize words in your vocabulary but not in your pre-trained embeddings to zero. We don't want this, and instead initialize them via a Gaussian distribution. This initialization is for the words which appear in the examples but we have cut from the vocabulary. When we feed sentences into our model, we feed a batch of them at a time, i.e. more than one at a time, and all sentences in the batch need to be the same size. Thus, to ensure each sentence in the batch is the same size, any shorter than the longest within the batch are padded. The final step of preparing the data is creating the iterators. We iterate over these in the training and evaluation loop, and they return a batch of examples (indexed and converted into tensors) at each iteration.
+
+For Training the Model we will be using Adam optimizer for training. This optimizer adapts the learning rate for each parameter, giving parameters that are updated more frequently lower learning rates and parameters that are updated infrequently higher learning rates. Next, we'll define our loss function. In PyTorch this is commonly called a criterion. The loss function here is binary cross entropy with logits.
+Our model currently outputs an unbound real number. As our labels are either 0 or 1, we want to restrict the predictions to a number between 0 and 1. We do this using the sigmoid or logit functions. We then use this this bound scalar to calculate the loss using binary cross entropy. The BCE With Logits Loss criterion carries out both the sigmoid and the binary cross entropy steps. We define the criterion and place the model and criterion on the GPU (if available) by using .to. The criterion function calculates the loss however we have to write our own function to calculate the accuracy. This function first feeds the predictions through a sigmoid layer, squashing the values between 0 and 1, we then round them to the nearest integer. This rounds any value greater than 0.5 to 1 (shortage of PPE tweets) and the rest to 0 (Not a shortage of PPE tweets). We then calculate how many rounded predictions equal the actual labels and average it across the batch.
